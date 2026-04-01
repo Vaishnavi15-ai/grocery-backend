@@ -1,18 +1,16 @@
-# Use official Maven image to build the app
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+FROM eclipse-temurin:17-jdk-jammy
 
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
 
-RUN mvn clean package -DskipTests
+# Copy build files first to leverage layer cache
+COPY build.gradle settings.gradle gradle.properties ./
+COPY gradle ./gradle
+RUN ./gradlew --no-daemon --console=plain clean --no-daemon
 
-# Use smaller JDK image to run app
-FROM eclipse-temurin:21-jdk
-
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+# Copy source and build
+COPY . .
+RUN ./gradlew --no-daemon bootJar -x test
 
 EXPOSE 8080
 
-ENTRYPOINT ["java","-jar","app.jar"]
+CMD ["java", "-jar", "build/libs/demo-0.0.1-SNAPSHOT.jar"]
